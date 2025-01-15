@@ -1,0 +1,322 @@
+Sub Main()
+    ' Parameters
+    Dim Ws As Double
+    Dim Ls As Double
+    Dim Hs As Double
+    Dim Hc As Double
+    Dim pixelSize As Double
+    Dim numPixelsX As Integer
+    Dim numPixelsY As Integer
+    Dim patternType As String
+
+    Ws = 27.0 ' Width of the substrate in mm
+    Ls = 27.0 ' Length of the substrate in mm
+    Hs = 1.6 ' Height of the substrate in mm
+    Hc = 0.035 ' Height of the conductor in mm
+    pixelSize = 1 ' Size of each pixel in mm (can be adjusted)
+    numPixelsX = Ws / pixelSize
+    numPixelsY = Ls / pixelSize
+    patternType = "KochSnowflake" ' Options: "Random", "SierpinskiCarpet", "SierpinskiTriangle", "Circle", "Flower", "KochSnowFlake"
+
+    ' Create substrate material
+    With Material
+        .Reset
+        .Name "FR-4 (lossy)"
+        .Folder ""
+        .FrqType "all"
+        .Type "Normal"
+        .SetMaterialUnit "GHz", "mm"
+        .Epsilon "4.3"
+        .Mu "1.0"
+        .Kappa "0.0"
+        .TanD "0.025"
+        .TanDFreq "10.0"
+        .TanDGiven "True"
+        .TanDModel "ConstTanD"
+        .KappaM "0.0"
+        .TanDM "0.0"
+        .TanDMFreq "0.0"
+        .TanDMGiven "False"
+        .TanDMModel "ConstKappa"
+        .DispModelEps "None"
+        .DispModelMu "None"
+        .DispersiveFittingSchemeEps "General 1st"
+        .DispersiveFittingSchemeMu "General 1st"
+        .UseGeneralDispersionEps "False"
+        .UseGeneralDispersionMu "False"
+        .Rho "0.0"
+        .ThermalType "Normal"
+        .ThermalConductivity "0.3"
+        .SetActiveMaterial "all"
+        .Colour "0.94", "0.82", "0.76"
+        .Wireframe "False"
+        .Transparency "0"
+        .Create
+    End With
+
+    ' Create substrate
+    With Brick
+        .Reset
+        .Name "Substrate"
+        .Component "Substrate"
+        .Material "FR-4 (lossy)"
+        .Xrange "-" & Ws / 2, Ws / 2
+        .Yrange "-" & Ls / 2, Ls / 2
+        .Zrange "-" & Hs, "0"
+        .Create
+    End With
+
+	With Brick
+	     .Reset
+	     .Name "Ground"
+	     .Component "Ground"
+	     .Material "PEC"
+	     .Xrange "-" & Ws / 2, Ws / 2
+	     .Yrange "-" & Ls / 2, Ls / 2
+	     .Zrange "-Hs-Hc", "-Hs"
+	     .Create
+	End With
+
+
+    ' Generate pattern based on patternType
+   Select Case patternType
+        Case "Random"
+            Call GenerateRandomPattern(numPixelsX, numPixelsY, pixelSize)
+        Case "SierpinskiCarpet"
+            Call SierpinskiCarpet(0, 0, Ws, 3) ' maxDepth = 3
+        Case "SierpinskiTriangle"
+            Call SierpinskiTriangle(0, 0, Ws, 3) ' maxDepth = 3
+        Case "Circle"
+            Call GenerateCirclePattern(0, 0, min(Ws, Ls) / 2 - pixelSize / 2, pixelSize)
+        Case "Flower"
+            Call GenerateFlowerPattern(0, 0, min(Ws, Ls) / 2 - pixelSize / 2, pixelSize)
+        Case "KochSnowflake"
+            Call KochSnowflake(0, 0, min(Ws, Ls), 4) ' maxDepth = 4
+    End Select
+
+
+
+End Sub
+
+' Function to generate random pattern
+Sub GenerateRandomPattern(numPixelsX As Integer, numPixelsY As Integer, pixelSize As Double)
+    Dim i As Integer, j As Integer
+    Randomize ' Initialize random number generator
+
+    For i = 0 To numPixelsX - 1
+        For j = 0 To numPixelsY - 1
+            If Rnd > 0.5 Then ' Randomly decide whether to create a pixel
+                Dim centerX As Double
+                Dim centerY As Double
+                centerX = (i * pixelSize) - (numPixelsX * pixelSize / 2) + (pixelSize / 2)
+                centerY = (j * pixelSize) - (numPixelsY * pixelSize / 2) + (pixelSize / 2)
+
+                With Brick
+                    .Reset
+                    .Name "Pixel_" & i & "_" & j
+                    .Component "component1"
+                    .Material "PEC"
+                    .Xrange centerX - pixelSize / 2, centerX + pixelSize / 2
+                    .Yrange centerY - pixelSize / 2, centerY + pixelSize / 2
+                    .Zrange "0", "0.035" ' Patch thickness in mm (copper thickness)
+                    .Create
+                End With
+            End If
+        Next j
+    Next i
+End Sub
+
+' Function to draw Sierpinski Carpet
+Sub SierpinskiCarpet(x As Double, y As Double, size As Double, depth As Integer)
+    If depth = 0 Then
+        ' Base case: create the pixel
+        With Brick
+            .Reset
+            .Name "Pixel_" & Replace(CStr(x), ".", "_") & "_" & Replace(CStr(y), ".", "_")
+            .Component "component1"
+            .Material "PEC"
+            .Xrange x - size / 2, x + size / 2
+            .Yrange y - size / 2, y + size / 2
+            .Zrange "0", "0.035" ' Patch thickness in mm (copper thickness)
+            .Create
+        End With
+    Else
+        ' Recursive case: subdivide the square into 9 smaller squares
+        Dim newSize As Double
+        Dim offsetX As Double, offsetY As Double
+        newSize = size / 3
+
+        Dim i As Integer, j As Integer
+        For i = -1 To 1
+            For j = -1 To 1
+                If Not (i = 0 And j = 0) Then
+                    offsetX = x + i * newSize
+                    offsetY = y + j * newSize
+                    Call SierpinskiCarpet(offsetX, offsetY, newSize, depth - 1)
+                End If
+            Next j
+        Next i
+    End If
+End Sub
+
+' Function to draw Sierpinski Triangle
+Sub SierpinskiTriangle(x As Double, y As Double, size As Double, depth As Integer)
+    If depth = 0 Then
+        ' Base case: create the pixel
+        Call CreateTriangle(x, y, size)
+    Else
+        ' Recursive case: divide the triangle into 3 smaller triangles
+        Dim newSize As Double
+        newSize = size / 2
+
+        Call SierpinskiTriangle(x, y + newSize / 2, newSize, depth - 1)
+        Call SierpinskiTriangle(x - newSize / 2, y - newSize / 2, newSize, depth - 1)
+        Call SierpinskiTriangle(x + newSize / 2, y - newSize / 2, newSize, depth - 1)
+    End If
+End Sub
+
+' Helper function to create a triangle
+Sub CreateTriangle(x As Double, y As Double, size As Double)
+    With Brick
+        .Reset
+        .Name "Triangle_" & Replace(CStr(x), ".", "_") & "_" & Replace(CStr(y), ".", "_")
+        .Component "component1"
+        .Material "PEC"
+        .Xrange x - size / 2, x + size / 2
+        .Yrange y - size / 2, y + size / 2
+        .Zrange "0", "0.035" ' Patch thickness in mm (copper thickness)
+        .Create
+    End With
+End Sub
+
+' Function to generate circle pattern
+Sub GenerateCirclePattern(centerX As Double, centerY As Double, radius As Double, pixelSize As Double)
+    Dim i As Integer, j As Integer
+    Dim x As Double, y As Double
+
+    For i = -radius / pixelSize To radius / pixelSize
+        For j = -radius / pixelSize To radius / pixelSize
+            x = i * pixelSize
+            y = j * pixelSize
+            If (x ^ 2 + y ^ 2 <= radius ^ 2) Then
+                With Brick
+                    .Reset
+                    .Name "Pixel_" & Replace(CStr(centerX + x), ".", "_") & "_" & Replace(CStr(centerY + y), ".", "_")
+                    .Component "component1"
+                    .Material "PEC"
+                    .Xrange centerX + x - pixelSize / 2, centerX + x + pixelSize / 2
+                    .Yrange centerY + y - pixelSize / 2, centerY + y + pixelSize / 2
+                    .Zrange "0", "0.035" ' Patch thickness in mm (copper thickness)
+                    .Create
+                End With
+            End If
+        Next j
+    Next i
+End Sub
+
+' Function to generate flower pattern
+Sub GenerateFlowerPattern(centerX As Double, centerY As Double, radius As Double, pixelSize As Double)
+    Dim i As Integer, j As Integer
+    Dim x As Double, y As Double
+    Dim numPetals As Integer
+    Dim theta As Double
+
+    numPetals = 5 ' Number of petals
+
+    For i = -radius / pixelSize To radius / pixelSize
+        For j = -radius / pixelSize To radius / pixelSize
+            x = i * pixelSize
+            y = j * pixelSize
+            theta = Atn2(y, x)
+            If (x ^ 2 + y ^ 2 <= radius ^ 2) And (Abs(Sin(numPetals * theta)) > 0.5) Then
+                With Brick
+                    .Reset
+                    .Name "Pixel_" & Replace(CStr(centerX + x), ".", "_") & "_" & Replace(CStr(centerY + y), ".", "_")
+                    .Component "component1"
+                    .Material "PEC"
+                    .Xrange centerX + x - pixelSize / 2, centerX + x + pixelSize / 2
+                    .Yrange centerY + y - pixelSize / 2, centerY + y + pixelSize / 2
+                    .Zrange "0", "0.035" ' Patch thickness in mm (copper thickness)
+                    .Create
+                End With
+            End If
+        Next j
+    Next i
+End Sub
+
+' Helper function to calculate minimum of two numbers
+Function min(a As Double, b As Double) As Double
+    If a < b Then
+        min = a
+    Else
+        min = b
+    End If
+End Function
+
+' Function to draw Koch Snowflake
+Sub KochSnowflake(centerX As Double, centerY As Double, size As Double, depth As Integer)
+    Dim pixelSize As Double
+    pixelSize = 0.5 ' Adjust this value if needed
+
+    ' Calculate base triangle points
+    Dim x1, y1, x2, y2, x3, y3 As Double
+    Dim side As Double
+    side = size * 0.8 ' Scale down to ensure it fits within boundaries
+
+    ' Calculate triangle vertices
+    x1 = centerX
+    y1 = centerY + side/2
+    x2 = centerX - side/2
+    y2 = centerY - side/2
+    x3 = centerX + side/2
+    y3 = centerY - side/2
+
+    ' Initialize counter for unique naming
+    Dim segmentCounter As Long
+    segmentCounter = 0
+
+    ' Draw three Koch curves for each side of the triangle
+    Call DrawKochLine(x1, y1, x2, y2, depth, pixelSize, segmentCounter)
+    Call DrawKochLine(x2, y2, x3, y3, depth, pixelSize, segmentCounter)
+    Call DrawKochLine(x3, y3, x1, y1, depth, pixelSize, segmentCounter)
+End Sub
+
+' Helper function to draw Koch Line
+Sub DrawKochLine(x1 As Double, y1 As Double, x2 As Double, y2 As Double, depth As Integer, pixelSize As Double, ByRef counter As Long)
+    If depth = 0 Then
+        ' Create a brick for the line segment
+        With Brick
+            .Reset
+            .Name "Koch_" & Format(counter, "000000") & "_" & Replace(CStr(x1), ".", "_") & "_" & Replace(CStr(y1), ".", "_")
+            .Component "component1"
+            .Material "PEC"
+            .Xrange x1, x2
+            .Yrange y1, y2
+            .Zrange "0", "0.035"
+            .Create
+        End With
+        counter = counter + 1
+    Else
+        Dim x3, y3, x4, y4, x5, y5 As Double
+
+        ' Calculate points for the Koch curve
+        x3 = x1 + (x2 - x1) / 3
+        y3 = y1 + (y2 - y1) / 3
+
+        x4 = x2 - (x2 - x1) / 3
+        y4 = y2 - (y2 - y1) / 3
+
+        ' Calculate the peak point
+        Dim angle As Double
+        angle = Atn(1) * 4 / 3 ' 60 degrees in radians
+
+        x5 = x3 + (x4 - x3) * Cos(angle) - (y4 - y3) * Sin(angle)
+        y5 = y3 + (x4 - x3) * Sin(angle) + (y4 - y3) * Cos(angle)
+
+        ' Recursive calls for each segment
+        Call DrawKochLine(x1, y1, x3, y3, depth - 1, pixelSize, counter)
+        Call DrawKochLine(x3, y3, x5, y5, depth - 1, pixelSize, counter)
+        Call DrawKochLine(x5, y5, x4, y4, depth - 1, pixelSize, counter)
+        Call DrawKochLine(x4, y4, x2, y2, depth - 1, pixelSize, counter)
+    End If
+End Sub

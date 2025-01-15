@@ -1,0 +1,759 @@
+Sub Main()
+    ' Parameters
+    Dim Ws As Double
+    Dim Ls As Double
+    Dim Hs As Double
+    Dim Hc As Double
+    Dim pixelSize As Double
+    Dim numPixelsX As Integer
+    Dim numPixelsY As Integer
+    Dim patternType As String
+
+    Ws = 27.0 ' Width of the substrate in mm
+    Ls = 27.0 ' Length of the substrate in mm
+    Hs = 1.6 ' Height of the substrate in mm
+    Hc = 0.035 ' Height of the conductor in mm
+    pixelSize = 0.25 ' Size of each pixel in mm (can be adjusted)
+    numPixelsX = Ws / pixelSize
+    numPixelsY = Ls / pixelSize
+	patternType = "RFIDText" ' Options: "RFIDText", "Random", "SierpinskiCarpet", "SierpinskiTriangle", "Circle", "Flower", "Flower2", "KochSnowflake", "PenroseTiling", "Spiral", "HexagonalLattice", "Mandelbrot", "ElegantAntenna"
+
+    ' Create substrate material
+    With Material
+        .Reset
+        .Name "FR-4 (lossy)"
+        .Folder ""
+        .FrqType "all"
+        .Type "Normal"
+        .SetMaterialUnit "GHz", "mm"
+        .Epsilon "4.3"
+        .Mu "1.0"
+        .Kappa "0.0"
+        .TanD "0.025"
+        .TanDFreq "10.0"
+        .TanDGiven "True"
+        .TanDModel "ConstTanD"
+        .KappaM "0.0"
+        .TanDM "0.0"
+        .TanDMFreq "0.0"
+        .TanDMGiven "False"
+        .TanDMModel "ConstKappa"
+        .DispModelEps "None"
+        .DispModelMu "None"
+        .DispersiveFittingSchemeEps "General 1st"
+        .DispersiveFittingSchemeMu "General 1st"
+        .UseGeneralDispersionEps "False"
+        .UseGeneralDispersionMu "False"
+        .Rho "0.0"
+        .ThermalType "Normal"
+        .ThermalConductivity "0.3"
+        .SetActiveMaterial "all"
+        .Colour "0.94", "0.82", "0.76"
+        .Wireframe "False"
+        .Transparency "0"
+        .Create
+    End With
+
+    ' Create substrate
+    With Brick
+        .Reset
+        .Name "Substrate"
+        .Component "Substrate"
+        .Material "FR-4 (lossy)"
+        .Xrange "-" & Ws / 2, Ws / 2
+        .Yrange "-" & Ls / 2, Ls / 2
+        .Zrange "-" & Hs, "0"
+        .Create
+    End With
+
+	With Brick
+	     .Reset
+	     .Name "Ground"
+	     .Component "Ground"
+	     .Material "PEC"
+	     .Xrange "-" & Ws / 2, Ws / 2
+	     .Yrange "-" & Ls / 2, Ls / 2
+	     .Zrange "-Hs-Hc", "-Hs"
+	     .Create
+	End With
+
+
+    ' Generate pattern based on patternType
+Select Case patternType
+    Case "Random"
+        Call GenerateRandomPattern(numPixelsX, numPixelsY, pixelSize)
+    Case "SierpinskiCarpet"
+        Call SierpinskiCarpet(0, 0, Ws, 3)
+    Case "SierpinskiTriangle"
+        Call SierpinskiTriangle(0, 0, Ws, 3)
+    Case "Circle"
+        Call GenerateCirclePattern(0, 0, min(Ws, Ls) / 2 - pixelSize / 2, pixelSize)
+    Case "Flower"
+        Call GenerateFlowerPattern(0, 0, min(Ws, Ls) / 2 - pixelSize / 2, pixelSize)
+    Case "Flower2"
+        Call GenerateFlowerPattern2(0, 0, min(Ws, Ls) / 2 - pixelSize / 2, pixelSize)
+    Case "KochSnowflake"
+        Call KochSnowflake(0, 0, min(Ws, Ls), 3)
+    Case "PenroseTiling"
+        Call GeneratePenroseTiling(0, 0, min(Ws, Ls) / 2 - pixelSize / 2, pixelSize)
+    Case "Spiral"
+        Call GenerateSpiral(0, 0, min(Ws, Ls) - pixelSize, pixelSize)
+    Case "HexagonalLattice"
+        Call GenerateHexagonalLattice(0, 0, min(Ws, Ls) / 2 - pixelSize / 2, pixelSize)
+    Case "Mandelbrot"
+        Call GenerateMandelbrot(0, 0, min(Ws, Ls) / 2 - pixelSize / 2, pixelSize)
+    Case "AntennaIcon"
+        Call GenerateAntennaIcon(0, 0, min(Ws, Ls) * 0.8, pixelSize)
+    Case "ElegantAntenna"
+    	Call GenerateElegantAntennaIcon(0, 0, min(Ws, Ls) * 0.8, pixelSize)
+    Case "RFIDText"
+    	Call GenerateRFIDText(0, 0, min(Ws, Ls), pixelSize)
+End Select
+
+
+
+End Sub
+
+' Function to generate random pattern
+Sub GenerateRandomPattern(numPixelsX As Integer, numPixelsY As Integer, pixelSize As Double)
+    Dim i As Integer, j As Integer
+    Randomize ' Initialize random number generator
+
+    For i = 0 To numPixelsX - 1
+        For j = 0 To numPixelsY - 1
+            If Rnd > 0.5 Then ' Randomly decide whether to create a pixel
+                Dim centerX As Double
+                Dim centerY As Double
+                centerX = (i * pixelSize) - (numPixelsX * pixelSize / 2) + (pixelSize / 2)
+                centerY = (j * pixelSize) - (numPixelsY * pixelSize / 2) + (pixelSize / 2)
+
+                With Brick
+                    .Reset
+                    .Name "Pixel_" & i & "_" & j
+                    .Component "component1"
+                    .Material "PEC"
+                    .Xrange centerX - pixelSize / 2, centerX + pixelSize / 2
+                    .Yrange centerY - pixelSize / 2, centerY + pixelSize / 2
+                    .Zrange "0", "0.035" ' Patch thickness in mm (copper thickness)
+                    .Create
+                End With
+            End If
+        Next j
+    Next i
+End Sub
+
+' Function to draw Sierpinski Carpet
+Sub SierpinskiCarpet(x As Double, y As Double, size As Double, depth As Integer)
+    If depth = 0 Then
+        ' Base case: create the pixel
+        With Brick
+            .Reset
+            .Name "Pixel_" & Replace(CStr(x), ".", "_") & "_" & Replace(CStr(y), ".", "_")
+            .Component "component1"
+            .Material "PEC"
+            .Xrange x - size / 2, x + size / 2
+            .Yrange y - size / 2, y + size / 2
+            .Zrange "0", "0.035" ' Patch thickness in mm (copper thickness)
+            .Create
+        End With
+    Else
+        ' Recursive case: subdivide the square into 9 smaller squares
+        Dim newSize As Double
+        Dim offsetX As Double, offsetY As Double
+        newSize = size / 3
+
+        Dim i As Integer, j As Integer
+        For i = -1 To 1
+            For j = -1 To 1
+                If Not (i = 0 And j = 0) Then
+                    offsetX = x + i * newSize
+                    offsetY = y + j * newSize
+                    Call SierpinskiCarpet(offsetX, offsetY, newSize, depth - 1)
+                End If
+            Next j
+        Next i
+    End If
+End Sub
+
+' Function to draw Sierpinski Triangle
+Sub SierpinskiTriangle(x As Double, y As Double, size As Double, depth As Integer)
+    If depth = 0 Then
+        ' Base case: create the pixel
+        Call CreateTriangle(x, y, size)
+    Else
+        ' Recursive case: divide the triangle into 3 smaller triangles
+        Dim newSize As Double
+        newSize = size / 2
+
+        Call SierpinskiTriangle(x, y + newSize / 2, newSize, depth - 1)
+        Call SierpinskiTriangle(x - newSize / 2, y - newSize / 2, newSize, depth - 1)
+        Call SierpinskiTriangle(x + newSize / 2, y - newSize / 2, newSize, depth - 1)
+    End If
+End Sub
+
+' Helper function to create a triangle
+Sub CreateTriangle(x As Double, y As Double, size As Double)
+    With Brick
+        .Reset
+        .Name "Triangle_" & Replace(CStr(x), ".", "_") & "_" & Replace(CStr(y), ".", "_")
+        .Component "component1"
+        .Material "PEC"
+        .Xrange x - size / 2, x + size / 2
+        .Yrange y - size / 2, y + size / 2
+        .Zrange "0", "0.035" ' Patch thickness in mm (copper thickness)
+        .Create
+    End With
+End Sub
+
+' Function to generate circle pattern
+Sub GenerateCirclePattern(centerX As Double, centerY As Double, radius As Double, pixelSize As Double)
+    Dim i As Integer, j As Integer
+    Dim x As Double, y As Double
+
+    For i = -radius / pixelSize To radius / pixelSize
+        For j = -radius / pixelSize To radius / pixelSize
+            x = i * pixelSize
+            y = j * pixelSize
+            If (x ^ 2 + y ^ 2 <= radius ^ 2) Then
+                With Brick
+                    .Reset
+                    .Name "Pixel_" & Replace(CStr(centerX + x), ".", "_") & "_" & Replace(CStr(centerY + y), ".", "_")
+                    .Component "component1"
+                    .Material "PEC"
+                    .Xrange centerX + x - pixelSize / 2, centerX + x + pixelSize / 2
+                    .Yrange centerY + y - pixelSize / 2, centerY + y + pixelSize / 2
+                    .Zrange "0", "0.035" ' Patch thickness in mm (copper thickness)
+                    .Create
+                End With
+            End If
+        Next j
+    Next i
+End Sub
+
+' Function to generate flower pattern
+Sub GenerateFlowerPattern(centerX As Double, centerY As Double, radius As Double, pixelSize As Double)
+    Dim i As Integer, j As Integer
+    Dim x As Double, y As Double
+    Dim numPetals As Integer
+    Dim theta As Double
+
+    numPetals = 5 ' Number of petals
+
+    For i = -radius / pixelSize To radius / pixelSize
+        For j = -radius / pixelSize To radius / pixelSize
+            x = i * pixelSize
+            y = j * pixelSize
+            theta = Atn2(y, x)
+            If (x ^ 2 + y ^ 2 <= radius ^ 2) And (Abs(Sin(numPetals * theta)) > 0.5) Then
+                With Brick
+                    .Reset
+                    .Name "Pixel_" & Replace(CStr(centerX + x), ".", "_") & "_" & Replace(CStr(centerY + y), ".", "_")
+                    .Component "component1"
+                    .Material "PEC"
+                    .Xrange centerX + x - pixelSize / 2, centerX + x + pixelSize / 2
+                    .Yrange centerY + y - pixelSize / 2, centerY + y + pixelSize / 2
+                    .Zrange "0", "0.035" ' Patch thickness in mm (copper thickness)
+                    .Create
+                End With
+            End If
+        Next j
+    Next i
+End Sub
+
+' Helper function to calculate minimum of two numbers
+Function min(a As Double, b As Double) As Double
+    If a < b Then
+        min = a
+    Else
+        min = b
+    End If
+End Function
+
+' Function to draw Koch Snowflake
+Sub KochSnowflake(centerX As Double, centerY As Double, size As Double, depth As Integer)
+    Dim pixelSize As Double
+    pixelSize = 0.5 ' Adjust this value if needed
+
+    ' Calculate base triangle points
+    Dim x1, y1, x2, y2, x3, y3 As Double
+    Dim side As Double
+    side = size * 0.8 ' Scale down to ensure it fits within boundaries
+
+    ' Calculate triangle vertices
+    x1 = centerX
+    y1 = centerY + side/2
+    x2 = centerX - side/2
+    y2 = centerY - side/2
+    x3 = centerX + side/2
+    y3 = centerY - side/2
+
+    ' Initialize counter for unique naming
+    Dim segmentCounter As Long
+    segmentCounter = 0
+
+    ' Draw three Koch curves for each side of the triangle
+    Call DrawKochLine(x1, y1, x2, y2, depth, pixelSize, segmentCounter)
+    Call DrawKochLine(x2, y2, x3, y3, depth, pixelSize, segmentCounter)
+    Call DrawKochLine(x3, y3, x1, y1, depth, pixelSize, segmentCounter)
+End Sub
+
+' Helper function to draw Koch Line
+Sub DrawKochLine(x1 As Double, y1 As Double, x2 As Double, y2 As Double, depth As Integer, pixelSize As Double, ByRef counter As Long)
+    If depth = 0 Then
+        ' Create a brick for the line segment
+        With Brick
+            .Reset
+            .Name "Koch_" & Format(counter, "000000") & "_" & Replace(CStr(x1), ".", "_") & "_" & Replace(CStr(y1), ".", "_")
+            .Component "component1"
+            .Material "PEC"
+            .Xrange x1, x2
+            .Yrange y1, y2
+            .Zrange "0", "0.035"
+            .Create
+        End With
+        counter = counter + 1
+    Else
+        Dim x3, y3, x4, y4, x5, y5 As Double
+
+        ' Calculate points for the Koch curve
+        x3 = x1 + (x2 - x1) / 3
+        y3 = y1 + (y2 - y1) / 3
+
+        x4 = x2 - (x2 - x1) / 3
+        y4 = y2 - (y2 - y1) / 3
+
+        ' Calculate the peak point
+        Dim angle As Double
+        angle = Atn(1) * 4 / 3 ' 60 degrees in radians
+
+        x5 = x3 + (x4 - x3) * Cos(angle) - (y4 - y3) * Sin(angle)
+        y5 = y3 + (x4 - x3) * Sin(angle) + (y4 - y3) * Cos(angle)
+
+        ' Recursive calls for each segment
+        Call DrawKochLine(x1, y1, x3, y3, depth - 1, pixelSize, counter)
+        Call DrawKochLine(x3, y3, x5, y5, depth - 1, pixelSize, counter)
+        Call DrawKochLine(x5, y5, x4, y4, depth - 1, pixelSize, counter)
+        Call DrawKochLine(x4, y4, x2, y2, depth - 1, pixelSize, counter)
+    End If
+End Sub
+' Function to generate alternative flower pattern (Rose Curve)
+Sub GenerateFlowerPattern2(centerX As Double, centerY As Double, radius As Double, pixelSize As Double)
+    Dim i As Integer, j As Integer
+    Dim x As Double, y As Double
+    Dim numPetals As Integer
+    Dim theta As Double
+    Dim r As Double
+    Dim k As Double
+
+    numPetals = 6 ' Number of petals (can be adjusted)
+    k = 2 ' This parameter affects the shape (try 2, 3, or 4)
+
+    For i = -radius / pixelSize To radius / pixelSize
+        For j = -radius / pixelSize To radius / pixelSize
+            x = i * pixelSize
+            y = j * pixelSize
+            theta = Atn2(y, x)
+            r = Sqr(x ^ 2 + y ^ 2)
+
+            ' Rose curve formula: r = sin(k*theta)
+            If r <= radius * Abs(Sin(k * theta)) Then
+                With Brick
+                    .Reset
+                    .Name "RoseFlower_" & Format(i, "000") & "_" & Format(j, "000")
+                    .Component "component1"
+                    .Material "PEC"
+                    .Xrange centerX + x - pixelSize / 2, centerX + x + pixelSize / 2
+                    .Yrange centerY + y - pixelSize / 2, centerY + y + pixelSize / 2
+                    .Zrange "0", "0.035"
+                    .Create
+                End With
+            End If
+        Next j
+    Next i
+End Sub
+
+' Function to generate Penrose Tiling pattern
+Sub GeneratePenroseTiling(centerX As Double, centerY As Double, size As Double, pixelSize As Double)
+    Dim goldenRatio As Double
+    goldenRatio = (1 + Sqr(5)) / 2
+    Dim i As Integer, j As Integer
+    Dim x As Double, y As Double
+    Dim theta As Double
+
+    For i = -size / pixelSize To size / pixelSize
+        For j = -size / pixelSize To size / pixelSize
+            x = i * pixelSize
+            y = j * pixelSize
+            theta = Atn2(y, x)
+
+            If (x^2 + y^2 <= size^2) And (Sin(theta * goldenRatio) > 0) Then
+                With Brick
+                    .Reset
+                    .Name "Penrose_" & Format(i, "000") & "_" & Format(j, "000")
+                    .Component "component1"
+                    .Material "PEC"
+                    .Xrange centerX + x - pixelSize / 2, centerX + x + pixelSize / 2
+                    .Yrange centerY + y - pixelSize / 2, centerY + y + pixelSize / 2
+                    .Zrange "0", "0.035"
+                    .Create
+                End With
+            End If
+        Next j
+    Next i
+End Sub
+
+
+' Function to generate Fibonacci Spiral pattern
+Sub GenerateSpiral(centerX As Double, centerY As Double, size As Double, pixelSize As Double)
+    Dim phi As Double
+    Dim r As Double
+    Dim theta As Double
+    Dim x As Double, y As Double
+    Dim maxRadius As Double
+
+    maxRadius = size / 2
+    phi = (1 + Sqr(5)) / 2 ' Golden ratio
+
+    For theta = 0 To 8 * 3.14159 STEP 0.1
+        r = phi ^ (theta / 3.14159) * pixelSize
+        If r <= maxRadius Then
+            x = r * Cos(theta)
+            y = r * Sin(theta)
+
+            With Brick
+                .Reset
+                .Name "Spiral_" & Format(Int(theta * 100), "0000")
+                .Component "component1"
+                .Material "PEC"
+                .Xrange centerX + x - pixelSize / 2, centerX + x + pixelSize / 2
+                .Yrange centerY + y - pixelSize / 2, centerY + y + pixelSize / 2
+                .Zrange "0", "0.035"
+                .Create
+            End With
+        End If
+    Next theta
+End Sub
+
+' Function to generate Hexagonal Lattice pattern
+Sub GenerateHexagonalLattice(centerX As Double, centerY As Double, size As Double, pixelSize As Double)
+    Dim i As Integer, j As Integer
+    Dim x As Double, y As Double
+    Dim hexSize As Double
+
+    hexSize = pixelSize * 2
+
+    For i = -size / hexSize To size / hexSize
+        For j = -size / hexSize To size / hexSize
+            x = i * hexSize * 1.5
+            y = j * hexSize * Sqr(3) + (i Mod 2) * hexSize * Sqr(3) / 2
+
+            If (x^2 + y^2 <= size^2) Then
+                Call DrawHexagon(centerX + x, centerY + y, hexSize)
+            End If
+        Next j
+    Next i
+End Sub
+
+Sub DrawHexagon(centerX As Double, centerY As Double, size As Double)
+    Dim i As Integer
+    Dim x1 As Double, y1 As Double
+    Dim x2 As Double, y2 As Double
+
+    For i = 0 To 5
+        x1 = centerX + size * Cos(i * 3.14159 / 3)
+        y1 = centerY + size * Sin(i * 3.14159 / 3)
+        x2 = centerX + size * Cos((i + 1) * 3.14159 / 3)
+        y2 = centerY + size * Sin((i + 1) * 3.14159 / 3)
+
+        With Brick
+            .Reset
+            .Name "Hex_" & Format(centerX, "000") & "_" & Format(centerY, "000") & "_" & i
+            .Component "component1"
+            .Material "PEC"
+            .Xrange x1, x2
+            .Yrange y1, y2
+            .Zrange "0", "0.035"
+            .Create
+        End With
+    Next i
+End Sub
+
+' Function to generate Mandelbrot Set approximation
+Sub GenerateMandelbrot(centerX As Double, centerY As Double, size As Double, pixelSize As Double)
+    Dim i As Integer, j As Integer
+    Dim x As Double, y As Double
+    Dim maxIter As Integer
+
+    maxIter = 20 ' Increase for more detail
+
+    For i = -size / pixelSize To size / pixelSize
+        For j = -size / pixelSize To size / pixelSize
+            x = i * pixelSize
+            y = j * pixelSize
+
+            If IsInMandelbrot(x/size * 2, y/size * 2, maxIter) Then
+                With Brick
+                    .Reset
+                    .Name "Mandel_" & Format(i, "000") & "_" & Format(j, "000")
+                    .Component "component1"
+                    .Material "PEC"
+                    .Xrange centerX + x - pixelSize / 2, centerX + x + pixelSize / 2
+                    .Yrange centerY + y - pixelSize / 2, centerY + y + pixelSize / 2
+                    .Zrange "0", "0.035"
+                    .Create
+                End With
+            End If
+        Next j
+    Next i
+End Sub
+
+Function IsInMandelbrot(x As Double, y As Double, maxIter As Integer) As Boolean
+    Dim zx As Double, zy As Double
+    Dim temp As Double
+    Dim iter As Integer
+
+    zx = 0
+    zy = 0
+
+    For iter = 1 To maxIter
+        temp = zx * zx - zy * zy + x
+        zy = 2 * zx * zy + y
+        zx = temp
+
+        If (zx * zx + zy * zy) > 4 Then
+            IsInMandelbrot = False
+            Exit Function
+        End If
+    Next iter
+
+    IsInMandelbrot = True
+End Function
+' Function to generate Antenna Icon pattern
+Sub GenerateAntennaIcon(centerX As Double, centerY As Double, size As Double, pixelSize As Double)
+    Dim baseWidth As Double
+    Dim stemHeight As Double
+    Dim radiationArc As Double
+
+    ' Scale the antenna parts relative to the size parameter
+    baseWidth = size * 0.3
+    stemHeight = size * 0.6
+    radiationArc = size * 0.4
+
+    ' Create base rectangle
+    With Brick
+        .Reset
+        .Name "Antenna_Base_" & Format(Now, "yyyymmddhhnnss")
+        .Component "component1"
+        .Material "PEC"
+        .Xrange centerX - baseWidth/2, centerX + baseWidth/2
+        .Yrange centerY - size/2, centerY - size/2 + baseWidth/2
+        .Zrange "0", "0.035"
+        .Create
+    End With
+
+    ' Create vertical stem
+    With Brick
+        .Reset
+        .Name "Antenna_Stem_" & Format(Now, "yyyymmddhhnnss")
+        .Component "component1"
+        .Material "PEC"
+        .Xrange centerX - pixelSize/2, centerX + pixelSize/2
+        .Yrange centerY - size/2, centerY - size/2 + stemHeight
+        .Zrange "0", "0.035"
+        .Create
+    End With
+
+    ' Create radiation arcs
+    Dim i As Integer
+    Dim theta As Double
+    Dim arcRadius As Double
+    Dim x As Double, y As Double
+    Dim prevX As Double, prevY As Double
+
+    ' Create three radiation arcs
+    For arcNum = 1 To 3
+        arcRadius = radiationArc * arcNum / 3
+        prevX = centerX
+        prevY = centerY - size/2 + stemHeight
+
+        ' Draw arc points
+        For i = 0 To 18
+            theta = (i * 10 - 90) * 3.14159 / 180 ' -90 to 90 degrees in radians
+            x = centerX + arcRadius * Cos(theta)
+            y = centerY - size/2 + stemHeight + arcRadius * Sin(theta)
+
+            If i > 0 Then
+                With Brick
+                    .Reset
+                    .Name "Antenna_Arc" & arcNum & "_" & i & "_" & Format(Now, "yyyymmddhhnnss")
+                    .Component "component1"
+                    .Material "PEC"
+                    .Xrange prevX, x
+                    .Yrange prevY, y
+                    .Zrange "0", "0.035"
+                    .Create
+                End With
+            End If
+
+            prevX = x
+            prevY = y
+        Next i
+    Next arcNum
+End Sub
+
+
+' Created by: ismailakdag
+' Date: 2025-01-15 08:45:39 UTC
+' Description: Generates an elegant antenna icon pattern within substrate boundaries for CST Studio Suite
+
+Sub GenerateElegantAntennaIcon(centerX As Double, centerY As Double, size As Double, pixelSize As Double)
+    ' Ensure pattern stays within substrate boundaries
+    Dim safetyMargin As Double
+    safetyMargin = pixelSize * 2 ' Margin from substrate edges
+
+    ' Scale parameters with respect to substrate size
+    Dim baseWidth As Double
+    Dim baseHeight As Double
+    Dim stemWidth As Double
+    Dim stemHeight As Double
+    Dim dipoleWidth As Double
+    Dim dipoleHeight As Double
+    Dim radiationGap As Double
+
+    ' Calculate proportions ensuring boundary limits
+    size = size - 2 * safetyMargin ' Adjust size to account for margin
+    baseWidth = size * 0.35
+    baseHeight = size * 0.08
+    stemWidth = size * 0.04
+    stemHeight = size * 0.5
+    dipoleWidth = size * 0.25
+    dipoleHeight = size * 0.04
+    radiationGap = size * 0.12
+
+    ' Create base (slightly curved top)
+    Dim i As Integer
+    Dim x As Double, y As Double
+    Dim prevX As Double, prevY As Double
+
+    ' Create curved base
+    For i = 0 To 20
+        x = centerX - baseWidth/2 + (baseWidth * i/20)
+        y = centerY - size/2 + baseHeight * (1 - Sin(3.14159 * i/20))
+
+        ' Check boundaries
+        If Abs(x) <= (size/2 - safetyMargin) And Abs(y) <= (size/2 - safetyMargin) Then
+            If i > 0 Then
+                With Brick
+                    .Reset
+                    .Name "Antenna_Base_" & i & "_" & Format(Now, "yyyymmddhhnnss")
+                    .Component "component1"
+                    .Material "PEC"
+                    .Xrange prevX, x
+                    .Yrange prevY, y
+                    .Zrange "0", "0.035"
+                    .Create
+                End With
+            End If
+            prevX = x
+            prevY = y
+        End If
+    Next i
+
+    ' Create vertical stem with slight taper
+    Dim stemX1 As Double, stemX2 As Double
+    For i = 0 To Int(stemHeight/pixelSize)
+        stemX1 = centerX - stemWidth/2 * (1 - i/stemHeight * 0.3)
+        stemX2 = centerX + stemWidth/2 * (1 - i/stemHeight * 0.3)
+        y = centerY - size/2 + baseHeight + i * pixelSize
+
+        ' Check boundaries
+        If Abs(stemX1) <= (size/2 - safetyMargin) And Abs(stemX2) <= (size/2 - safetyMargin) And _
+           Abs(y) <= (size/2 - safetyMargin) Then
+            With Brick
+                .Reset
+                .Name "Antenna_Stem_" & i & "_" & Format(Now, "yyyymmddhhnnss")
+                .Component "component1"
+                .Material "PEC"
+                .Xrange stemX1, stemX2
+                .Yrange y, y + pixelSize
+                .Zrange "0", "0.035"
+                .Create
+            End With
+        End If
+    Next i
+
+    ' Create dipole elements
+    Dim dipoleY As Double
+    dipoleY = centerY - size/2 + baseHeight + stemHeight - dipoleHeight/2
+
+    ' Check boundaries for dipoles
+    If Abs(dipoleY) <= (size/2 - safetyMargin) Then
+        ' Left dipole
+        With Brick
+            .Reset
+            .Name "Antenna_DipoleLeft_" & Format(Now, "yyyymmddhhnnss")
+            .Component "component1"
+            .Material "PEC"
+            .Xrange centerX - dipoleWidth - stemWidth/2, centerX - stemWidth/2
+            .Yrange dipoleY, dipoleY + dipoleHeight
+            .Zrange "0", "0.035"
+            .Create
+        End With
+
+        ' Right dipole
+        With Brick
+            .Reset
+            .Name "Antenna_DipoleRight_" & Format(Now, "yyyymmddhhnnss")
+            .Component "component1"
+            .Material "PEC"
+            .Xrange centerX + stemWidth/2, centerX + dipoleWidth + stemWidth/2
+            .Yrange dipoleY, dipoleY + dipoleHeight
+            .Zrange "0", "0.035"
+            .Create
+        End With
+    End If
+
+    ' Create radiation arcs
+    Dim arcRadius As Double
+    Dim theta As Double
+    Dim numArcs As Integer
+    numArcs = 4 ' Reduced number of arcs to fit better
+
+    For arcNum = 1 To numArcs
+        arcRadius = (radiationGap * arcNum)
+
+        ' Check if arc radius is within boundaries
+        If arcRadius <= (size/2 - safetyMargin) Then
+            prevX = centerX + arcRadius
+            prevY = dipoleY
+
+            ' Draw smoother arc with more points
+            For i = 0 To 30
+                theta = (i * 6) * 3.14159 / 180 ' 0 to 180 degrees in radians
+                x = centerX + arcRadius * Cos(theta)
+                y = dipoleY + arcRadius * Sin(theta)
+
+                ' Check boundaries for each arc point
+                If Abs(x) <= (size/2 - safetyMargin) And Abs(y) <= (size/2 - safetyMargin) Then
+                    If i > 0 Then
+                        With Brick
+                            .Reset
+                            .Name "Antenna_Arc" & arcNum & "_" & i & "_" & Format(Now, "yyyymmddhhnnss")
+                            .Component "component1"
+                            .Material "PEC"
+                            .Xrange prevX, x
+                            .Yrange prevY, y
+                            .Zrange "0", "0.035"
+                            .Create
+                        End With
+                    End If
+                    prevX = x
+                    prevY = y
+                End If
+            Next i
+        End If
+    Next arcNum
+End Sub
+
+
+
