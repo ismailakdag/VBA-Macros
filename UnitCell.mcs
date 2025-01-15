@@ -3,6 +3,7 @@ Sub Main()
     Dim Ws As Double
     Dim Ls As Double
     Dim Hs As Double
+    Dim Hc As Double
     Dim pixelSize As Double
     Dim numPixelsX As Integer
     Dim numPixelsY As Integer
@@ -11,6 +12,7 @@ Sub Main()
     Ws = 27.0 ' Width of the substrate in mm
     Ls = 27.0 ' Length of the substrate in mm
     Hs = 1.6 ' Height of the substrate in mm
+    Hc = 0.035 ' Height of the conductor in mm
     pixelSize = 0.5 ' Size of each pixel in mm (can be adjusted)
     numPixelsX = Ws / pixelSize
     numPixelsY = Ls / pixelSize
@@ -56,13 +58,25 @@ Sub Main()
     With Brick
         .Reset
         .Name "Substrate"
-        .Component "component1"
+        .Component "Substrate"
         .Material "FR-4 (lossy)"
         .Xrange "-" & Ws / 2, Ws / 2
         .Yrange "-" & Ls / 2, Ls / 2
         .Zrange "-" & Hs, "0"
         .Create
     End With
+
+	With Brick
+	     .Reset
+	     .Name "Ground"
+	     .Component "Ground"
+	     .Material "PEC"
+	     .Xrange "-" & Ws / 2, Ws / 2
+	     .Yrange "-" & Ls / 2, Ls / 2
+	     .Zrange "-Hs-Hc", "-Hs"
+	     .Create
+	End With
+
 
     ' Generate pattern based on patternType
     Select Case patternType
@@ -77,6 +91,9 @@ Sub Main()
         Case "Flower"
             Call GenerateFlowerPattern(0, 0, min(Ws, Ls) / 2 - pixelSize / 2, pixelSize)
     End Select
+
+
+
 End Sub
 
 ' Function to generate random pattern
